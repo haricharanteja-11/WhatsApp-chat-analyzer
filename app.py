@@ -9,31 +9,57 @@ import warnings
 warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="WhatsApp Chat Analyzer", layout="wide")
-USERS_DB = "users_db.json"
+
+USERS_DB_FILE = "users_db.json"
 
 # ------------------ User Auth ------------------
 
 def load_users():
-    if os.path.exists(USERS_DB):
-        with open(USERS_DB, "r") as f:
-            return json.load(f)
-    return {}
+    with open("users_db.json", "r") as f:
+        return json.load(f)
+
 
 def save_users(users):
-    with open(USERS_DB, "w") as f:
-        json.dump(users, f)
+    with open(USERS_DB_FILE, "w") as f:
+        json.dump(users, f, indent=4)
 
 def signup(username, password):
     users = load_users()
     if username in users:
         return False
-    users[username] = password
+    users[username] = {"password": password}
     save_users(users)
     return True
 
 def login(username, password):
     users = load_users()
-    return users.get(username) == password
+    return username in users and users[username] == password
+
+
+def auth_ui():
+    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
+    
+    menu = st.selectbox("Choose an option", ["Login", "Sign Up"])
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if menu == "Sign Up":
+        if st.button("Sign Up"):
+            if signup(username, password):
+                st.success("Sign up successful! Please log in.")
+            else:
+                st.error("Username already exists.")
+    else:
+        if st.button("Login"):
+            if login(username, password):
+                st.session_state["logged_in"] = True
+                st.session_state["user"] = username
+                st.success("Login successful!")
+                st.rerun()
+ # Fixes double-click
+            else:
+                st.error("Invalid username or password.")
 
 # ------------------ WhatsApp Analyzer ------------------
 
@@ -127,44 +153,16 @@ def whatsapp_analyzer():
             sns.heatmap(user_heatmap, ax=ax, cmap="YlOrBr", linewidths=0.3, linecolor='gray')
             st.pyplot(fig)
 
-# ------------------ Auth UI ------------------
-
-def auth_ui():
-    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
-
-    menu = st.selectbox("Choose an option", ["Login", "Sign Up"])
-
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-
-    if menu == "Sign Up":
-        if st.button("Sign Up"):
-            if signup(username, password):
-                st.success("Sign up successful! Please log in.")
-            else:
-                st.error("Username already exists.")
-    else:
-        if st.button("Login"):
-            with open("users_db.json", "r") as f:
-                users = json.load(f)
-
-            if username in users and users[username]["password"] == password:
-                st.session_state["authenticated"] = True
-                st.session_state["username"] = username
-                st.success("Logged in successfully!")
-                st.experimental_rerun()  # solves the double click issue
-            else:
-                st.error("Invalid username or password")
 # ------------------ App Entry ------------------
 
 def main():
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
+    if "logged_in" not in st.session_state:
+        st.session_state["logged_in"] = False
 
-    if st.session_state.authenticated:
-        whatsapp_analyzer()
-    else:
+    if not st.session_state["logged_in"]:
         auth_ui()
+    else:
+        whatsapp_analyzer()
 
 if __name__ == "__main__":
     main()
