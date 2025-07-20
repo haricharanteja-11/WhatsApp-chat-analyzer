@@ -13,59 +13,72 @@ warnings.filterwarnings("ignore")
 st.set_page_config(page_title="WhatsApp Chat Analyzer", layout="wide")
 
 # ------------------ Authentication ------------------
-USER_DB = "user_db.json"
+DB_FILE = "users_db.json"
 
+# Load users from file
 def load_users():
-    if os.path.exists(USER_DB):
-        with open(USER_DB, 'r') as f:
-            return json.load(f)
-    return {}
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, "r") as file:
+            return json.load(file)
+    else:
+        return {}
 
+# Save users to file
 def save_users(users):
-    with open(USER_DB, 'w') as f:
-        json.dump(users, f)
+    with open(DB_FILE, "w") as file:
+        json.dump(users, file)
 
+# Hash the password
 def hash_password(password):
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
+# Verify password
 def check_password(password, hashed):
     return bcrypt.checkpw(password.encode(), hashed.encode())
 
-# Login / Signup UI
-def auth_ui():
-    st.sidebar.title("🔐 Login / Signup")
-    menu = st.sidebar.radio("Choose Action", ["Login", "Signup"])
-    users = load_users()
+# Signup Page
+def signup():
+    st.subheader("Sign Up")
+    new_user = st.text_input("Username")
+    new_pass = st.text_input("Password", type="password")
+    if st.button("Create Account"):
+        users = load_users()
+        if new_user in users:
+            st.error("Username already exists!")
+        else:
+            users[new_user] = hash_password(new_pass)
+            save_users(users)
+            st.success("Account created successfully. Please log in.")
 
-    if menu == "Signup":
-        username = st.sidebar.text_input("Choose Username")
-        password = st.sidebar.text_input("Choose Password", type="password")
-        if st.sidebar.button("Create Account"):
-            if username in users:
-                st.sidebar.error("Username already exists!")
-            else:
-                users[username] = hash_password(password)
-                save_users(users)
-                st.sidebar.success("Account created! Please log in.")
+# Login Page
+def login():
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        users = load_users()
+        if username in users and check_password(password, users[username]):
+            st.success(f"Welcome, {username}!")
+            return True
+        else:
+            st.error("Invalid credentials.")
+    return False
 
-    elif menu == "Login":
-        username = st.sidebar.text_input("Username")
-        password = st.sidebar.text_input("Password", type="password")
-        if st.sidebar.button("Login"):
-            if username in users and check_password(password, users[username]):
-                st.session_state["authenticated"] = True
-                st.session_state["username"] = username
-                st.sidebar.success(f"Welcome back, {username}!")
-                st.rerun()
+# Main App
+def main():
+    st.title("🔍 WhatsApp Chat Analyzer")
 
-            else:
-                st.sidebar.error("Invalid credentials")
+    menu = ["Login", "Sign Up"]
+    choice = st.sidebar.selectbox("Menu", menu)
 
-# Run authentication interface if not logged in
-if "authenticated" not in st.session_state or not st.session_state["authenticated"]:
-    auth_ui()
-    st.stop()
+    if choice == "Sign Up":
+        signup()
+    else:
+        if login():
+            st.info("Now show your main app UI here...")
 
+if __name__ == "__main__":
+    main()
 # ------------------ WhatsApp Analyzer ------------------
 # Custom CSS Styling
 st.markdown("""
