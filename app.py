@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import json
 import os
+import re
 import warnings
 import bcrypt
-
 
 warnings.filterwarnings("ignore")
 
@@ -14,67 +14,87 @@ st.set_page_config(page_title="WhatsApp Chat Analyzer", layout="wide")
 
 USERS_DB_FILE = "users_db.json"
 
+
 # ------------------ User Auth ------------------
 
 def load_users():
-    with open("users_db.json", "r") as f:
-        return json.load(f)
-
+    if os.path.exists(USERS_DB_FILE):
+        with open(USERS_DB_FILE, "r") as f:
+            return json.load(f)
+    return {}
 
 def save_users(users):
     with open(USERS_DB_FILE, "w") as f:
         json.dump(users, f, indent=4)
 
-def signup(username, password):
-    users = load_users()
+def is_strong_password(password):
+    return (
+        len(password) >= 8 and
+        re.search(r"[A-Z]", password) and
+        re.search(r"[a-z]", password) and
+        re.search(r"[0-9]", password) and
+        re.search(r"[!@#$%^&*()_+]", password)
+    )
 
-    if username in users:
-        st.error("Username already exists!")
-        return False
+def signup_ui():
+    st.subheader("🔐 Sign Up")
 
-    hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    users[username] = hashed_pw
-    save_users(users)
-    st.success("Account created successfully!")
-    return True
+    with st.form("signup_form"):
+        username = st.text_input("Choose a Username")
+        password = st.text_input("Choose a Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        st.caption("⚠️ Password must be at least 8 characters long and include uppercase, lowercase, number, and special symbol.")
+        submitted = st.form_submit_button("Sign Up")
 
-def login(username, password):
-    users = load_users()
+        if submitted:
+            users = load_users()
 
-    if username in users:
-        stored_hash = users[username]
-        if bcrypt.checkpw(password.encode(), stored_hash.encode()):
-            st.success("Login successful!")
-            return True
-    st.error("Invalid credentials.")
-    return False
+            if not username or not password or not confirm_password:
+                st.error("All fields are required.")
+                return
 
+            if username in users:
+                st.error("🚫 Username already exists.")
+                return
 
+            if password != confirm_password:
+                st.error("Passwords do not match.")
+                return
 
-def auth_ui():
-    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
-    
-    menu = st.selectbox("Choose an option", ["Login", "Sign Up"])
+            if not is_strong_password(password):
+                st.error("Weak password. Please follow the required format.")
+                return
+
+            hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            users[username] = hashed_pw
+            save_users(users)
+            st.success("✅ Account created successfully! Please log in.")
+
+def login_ui():
+    st.subheader("🔓 Login")
 
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
 
-    if menu == "Sign Up":
-        if st.button("Sign Up"):
-            if signup(username, password):
-                st.success("Sign up successful! Please log in.")
-            else:
-                st.error("Username already exists.")
+    if st.button("Login"):
+        users = load_users()
+        if username in users and bcrypt.checkpw(password.encode(), users[username].encode()):
+            st.success("Login successful!")
+            st.session_state["logged_in"] = True
+            st.session_state["user"] = username
+            st.rerun()
+        else:
+            st.error("Invalid username or password.")
+
+def auth_ui():
+    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
+    auth_choice = st.radio("Select Action", ["Login", "Sign Up"], horizontal=True)
+
+    if auth_choice == "Login":
+        login_ui()
     else:
-        if st.button("Login"):
-            if login(username, password):
-                st.session_state["logged_in"] = True
-                st.session_state["user"] = username
-                st.success("Login successful!")
-                st.rerun()
- # Fixes double-click
-            else:
-                st.error("Invalid username or password.")
+        signup_ui()
+
 
 # ------------------ WhatsApp Analyzer ------------------
 
@@ -168,16 +188,18 @@ def whatsapp_analyzer():
             sns.heatmap(user_heatmap, ax=ax, cmap="YlOrBr", linewidths=0.3, linecolor='gray')
             st.pyplot(fig)
 
+
 # ------------------ App Entry ------------------
 
 def main():
     if "logged_in" not in st.session_state:
         st.session_state["logged_in"] = False
 
-    if not st.session_state["logged_in"]:
-        auth_ui()
-    else:
+    if st.session_state["logged_in"]:
         whatsapp_analyzer()
+    else:
+        auth_ui()
+
 
 if __name__ == "__main__":
     main()
