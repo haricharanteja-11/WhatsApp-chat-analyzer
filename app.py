@@ -13,18 +13,19 @@ st.set_page_config(page_title="WhatsApp Chat Analyzer", layout="wide")
 
 USERS_DB = "users_db.json"
 
-# ------------------ Auth Functions ------------------
-
+# Load users from JSON file
 def load_users():
     if os.path.exists(USERS_DB):
-        with open(USERS_DB, "r") as file:
-            return json.load(file)
+        with open(USERS_DB, "r") as f:
+            return json.load(f)
     return {}
 
+# Save users to JSON file
 def save_users(users):
-    with open(USERS_DB, "w") as file:
-        json.dump(users, file)
+    with open(USERS_DB, "w") as f:
+        json.dump(users, f)
 
+# Signup logic
 def signup(username, password):
     users = load_users()
     if username in users:
@@ -33,30 +34,51 @@ def signup(username, password):
     save_users(users)
     return True
 
+# Login logic
 def login(username, password):
     users = load_users()
     return users.get(username) == password
 
-def auth_ui():
-    st.title("🔐 Login / Signup")
+# Main app logic
+def main():
+    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
 
-    option = st.selectbox("Choose an option", ["Login", "Signup"])
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    # Session state
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
 
-    if st.button(option):
-        if option == "Login":
-            if login(username, password):
-                st.success("✅ Login successful")
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("❌ Invalid username or password")
+    if not st.session_state.logged_in:
+        menu = st.selectbox("Choose an option", ["Login", "Sign Up"])
+
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        if menu == "Sign Up":
+            if st.button("Sign Up"):
+                if signup(username, password):
+                    st.success("Sign up successful! Please log in.")
+                else:
+                    st.error("Username already exists.")
         else:
-            if signup(username, password):
-                st.success("✅ Signup successful. Please login now.")
-            else:
-                st.error("❌ Username already exists.")
+            if st.button("Login"):
+                if login(username, password):
+                    st.success("Login successful!")
+                    st.session_state.logged_in = True
+                    st.session_state.username = username
+                else:
+                    st.error("Invalid credentials.")
+    else:
+        st.success(f"Welcome, {st.session_state.username} 🎉")
+        st.header("📊 Upload WhatsApp Chat File")
+
+        uploaded_file = st.file_uploader("Upload your WhatsApp chat (.txt)", type=["txt"])
+        if uploaded_file:
+            text = uploaded_file.read().decode("utf-8")
+            st.text_area("Chat Preview", text[:500], height=300)
+
+# Run the app
+if __name__ == "__main__":
+    main()
 
 # ------------------ Main App ------------------
 
