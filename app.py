@@ -145,14 +145,16 @@ def auth_ui():
                 st.error("Username already exists.")
     else:
         if st.button("Login"):
+            with open("users_db.json", "r") as f:
+                users = json.load(f)
+
             if username in users and users[username]["password"] == password:
                 st.session_state["authenticated"] = True
                 st.session_state["username"] = username
                 st.success("Logged in successfully!")
-                st.experimental_rerun()  # <--- this solves the double click issue
+                st.experimental_rerun()  # solves the double click issue
             else:
                 st.error("Invalid username or password")
-
 # ------------------ App Entry ------------------
 
 def main():
