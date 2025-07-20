@@ -145,12 +145,13 @@ def auth_ui():
                 st.error("Username already exists.")
     else:
         if st.button("Login"):
-            if login(username, password):
-                st.success("Login successful!")
-                st.session_state.authenticated = True
-                st.session_state.username = username
+            if username in users and users[username]["password"] == password:
+                st.session_state["authenticated"] = True
+                st.session_state["username"] = username
+                st.success("Logged in successfully!")
+                st.experimental_rerun()  # <--- this solves the double click issue
             else:
-                st.error("Invalid credentials.")
+                st.error("Invalid username or password")
 
 # ------------------ App Entry ------------------
 
