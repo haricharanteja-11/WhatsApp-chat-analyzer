@@ -5,6 +5,8 @@ import seaborn as sns
 import json
 import os
 import warnings
+import bcrypt
+
 
 warnings.filterwarnings("ignore")
 
@@ -25,15 +27,28 @@ def save_users(users):
 
 def signup(username, password):
     users = load_users()
+
     if username in users:
+        st.error("Username already exists!")
         return False
-    users[username] = {"password": password}
+
+    hashed_pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    users[username] = hashed_pw
     save_users(users)
+    st.success("Account created successfully!")
     return True
 
 def login(username, password):
     users = load_users()
-    return username in users and users[username] == password
+
+    if username in users:
+        stored_hash = users[username]
+        if bcrypt.checkpw(password.encode(), stored_hash.encode()):
+            st.success("Login successful!")
+            return True
+    st.error("Invalid credentials.")
+    return False
+
 
 
 def auth_ui():
