@@ -8,24 +8,21 @@ import warnings
 
 warnings.filterwarnings("ignore")
 
-# ------------------ Config ------------------
 st.set_page_config(page_title="WhatsApp Chat Analyzer", layout="wide")
-
 USERS_DB = "users_db.json"
 
-# Load users from JSON file
+# ------------------ User Auth ------------------
+
 def load_users():
     if os.path.exists(USERS_DB):
         with open(USERS_DB, "r") as f:
             return json.load(f)
     return {}
 
-# Save users to JSON file
 def save_users(users):
     with open(USERS_DB, "w") as f:
         json.dump(users, f)
 
-# Signup logic
 def signup(username, password):
     users = load_users()
     if username in users:
@@ -34,75 +31,14 @@ def signup(username, password):
     save_users(users)
     return True
 
-# Login logic
 def login(username, password):
     users = load_users()
     return users.get(username) == password
 
-# Main app logic
-def main():
-    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
+# ------------------ WhatsApp Analyzer ------------------
 
-    # Session state
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-
-    if not st.session_state.logged_in:
-        menu = st.selectbox("Choose an option", ["Login", "Sign Up"])
-
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-
-        if menu == "Sign Up":
-            if st.button("Sign Up"):
-                if signup(username, password):
-                    st.success("Sign up successful! Please log in.")
-                else:
-                    st.error("Username already exists.")
-        else:
-            if st.button("Login"):
-                if login(username, password):
-                    st.success("Login successful!")
-                    st.session_state.logged_in = True
-                    st.session_state.username = username
-                else:
-                    st.error("Invalid credentials.")
-    else:
-        st.success(f"Welcome, {st.session_state.username} 🎉")
-        st.header("📊 Upload WhatsApp Chat File")
-
-        uploaded_file = st.file_uploader("Upload your WhatsApp chat (.txt)", type=["txt"])
-        if uploaded_file:
-            text = uploaded_file.read().decode("utf-8")
-            st.text_area("Chat Preview", text[:500], height=300)
-
-# Run the app
-if __name__ == "__main__":
-    main()
-
-# ------------------ Main App ------------------
-
-def main_app():
-    # Custom CSS Styling
-    st.markdown("""
-        <style>
-        body {
-            font-family: 'Segoe UI', sans-serif;
-        }
-        .big-font {
-            font-size: 24px !important;
-            font-weight: bold;
-        }
-        .section-header {
-            font-size: 20px;
-            margin-top: 30px;
-            color: #2E8B57;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<h1 style='text-align: center; color: #1DB954;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
-    st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
+def whatsapp_analyzer():
+    st.markdown("<h2 style='text-align: center; color: #1DB954;'>📊 WhatsApp Chat Analyzer</h2>", unsafe_allow_html=True)
 
     st.sidebar.image("https://img.icons8.com/fluency/96/whatsapp.png", width=80)
     st.sidebar.header("📂 Upload WhatsApp Chat")
@@ -154,17 +90,17 @@ def main_app():
             plt.xticks(rotation=45)
             st.pyplot(fig)
 
-            st.markdown("### 📅 Monthly Message Timeline")
+            st.markdown("### 📅 Monthly Timeline")
             timeline = helper.monthy_timeline(selected_user, df)
             fig, ax = plt.subplots()
-            ax.plot(timeline['time'], timeline['message'], color='#28A745', linewidth=2)
+            ax.plot(timeline['time'], timeline['message'], color='#28A745')
             plt.xticks(rotation='vertical')
             st.pyplot(fig)
 
             st.markdown("### 📆 Daily Activity")
             daily_timeline = helper.daily_timeline(selected_user, df)
             fig, ax = plt.subplots()
-            ax.plot(daily_timeline['only_date'], daily_timeline['message'], color='#007BFF', linewidth=2)
+            ax.plot(daily_timeline['only_date'], daily_timeline['message'], color='#007BFF')
             plt.xticks(rotation='vertical')
             st.pyplot(fig)
 
@@ -191,17 +127,39 @@ def main_app():
             sns.heatmap(user_heatmap, ax=ax, cmap="YlOrBr", linewidths=0.3, linecolor='gray')
             st.pyplot(fig)
 
-            st.markdown("<hr style='border: 1px solid #ccc;'>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center; color: gray;'>Made with 💚 Streamlit</p>", unsafe_allow_html=True)
+# ------------------ Auth UI ------------------
 
-# ------------------ Entry Point ------------------
+def auth_ui():
+    st.markdown("<h1 style='text-align: center; color: green;'>📱 WhatsApp Chat Analyzer</h1>", unsafe_allow_html=True)
+
+    menu = st.selectbox("Choose an option", ["Login", "Sign Up"])
+
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+
+    if menu == "Sign Up":
+        if st.button("Sign Up"):
+            if signup(username, password):
+                st.success("Sign up successful! Please log in.")
+            else:
+                st.error("Username already exists.")
+    else:
+        if st.button("Login"):
+            if login(username, password):
+                st.success("Login successful!")
+                st.session_state.authenticated = True
+                st.session_state.username = username
+            else:
+                st.error("Invalid credentials.")
+
+# ------------------ App Entry ------------------
 
 def main():
     if "authenticated" not in st.session_state:
-        st.session_state["authenticated"] = False
+        st.session_state.authenticated = False
 
-    if st.session_state["authenticated"]:
-        main_app()
+    if st.session_state.authenticated:
+        whatsapp_analyzer()
     else:
         auth_ui()
 
